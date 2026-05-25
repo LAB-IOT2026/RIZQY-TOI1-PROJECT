@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>SMART IOT</title>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+
+body{
+background:#0f172a;
+font-family:Arial;
+text-align:center;
+color:white;
+margin:0;
+}
+
+.card{
+background:#1e293b;
+margin:10px;
+padding:15px;
+border-radius:15px;
+}
+
+button{
+width:42%;
+padding:14px;
+margin:5px;
+border:none;
+border-radius:10px;
+font-size:15px;
+color:white;
+}
+
+input{
+width:90%;
+padding:12px;
+margin:5px;
+border:none;
+border-radius:10px;
+font-size:15px;
+}
+
+.g{background:#22c55e;}
+.r{background:#ef4444;}
+.b{background:#3b82f6;}
+.o{background:#f59e0b;}
+
+</style>
+</head>
+<body>
+
+<h2>SMART IOT CONTROL</h2>
+
+<!-- STATUS -->
+<div class="card">
+
+<div id="relay">Relay : OFF</div>
+<br>
+
+<div id="mode">Mode : MANUAL</div>
+<br>
+
+<div id="online">Internet : OFFLINE</div>
+<br><br>
+
+<div style="font-size:30px;" id="jam">00:00:00</div>
+
+</div>
+
+<!-- CONTROL -->
+<div class="card">
+
+<button class="g" onclick="sendControl('ON')">ON</button>
+
+<button class="r" onclick="sendControl('OFF')">OFF</button>
+
+<br>
+
+<button class="o" onclick="sendControl('AUTO')">AUTO</button>
+
+<button class="b" onclick="sendControl('MANUAL')">MANUAL</button>
+
+</div>
+
+<!-- SET JAM -->
+<div class="card">
+
+<h3>SET JAM</h3>
+
+<input type="time" id="jamset">
+
+<br>
+
+<button class="b" onclick="setJam()">SET JAM</button>
+
+</div>
+
+<!-- PAGI -->
+<div class="card">
+
+<h3>JADWAL PAGI</h3>
+
+ON<br>
+<input type="time" id="pon"><br>
+
+OFF<br>
+<input type="time" id="poff"><br>
+
+<h3>JADWAL SORE</h3>
+
+ON<br>
+<input type="time" id="son"><br>
+
+OFF<br>
+<input type="time" id="soff"><br>
+
+<button class="g" onclick="setJadwal()">SIMPAN JADWAL</button>
+
+</div>
+
+<script>
+
+// MQTT CONNECT
+const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+
+// CONNECTED
+client.on('connect',()=>{
+
+console.log("MQTT CONNECTED");
+
+client.subscribe("SMART_STATUS");
+
+});
+
+// STATUS
+client.on('message',(topic,message)=>{
+
+let data=JSON.parse(message.toString());
+
+document.getElementById("relay").innerHTML=
+"Relay : "+(data.relay ? "ON":"OFF");
+
+document.getElementById("mode").innerHTML=
+"Mode : "+(data.auto ? "AUTO":"MANUAL");
+
+document.getElementById("online").innerHTML=
+"Internet : "+(data.online ? "ONLINE":"OFFLINE");
+
+// JAM
+let hh=data.h<10?"0"+data.h:data.h;
+let mm=data.m<10?"0"+data.m:data.m;
+let ss=data.s<10?"0"+data.s:data.s;
+
+document.getElementById("jam").innerHTML=
+hh+":"+mm+":"+ss;
+
+});
+
+// CONTROL
+function sendControl(cmd){
+
+client.publish("SMART_CONTROL",cmd);
+
+}
+
+// SET JAM
+function setJam(){
+
+let jam=document.getElementById("jamset").value;
+
+client.publish("SMART_TIME",jam);
+
+alert("Jam berhasil diset");
+
+}
+
+// SET JADWAL
+function setJadwal(){
+
+let pon=document.getElementById("pon").value;
+let poff=document.getElementById("poff").value;
+
+let son=document.getElementById("son").value;
+let soff=document.getElementById("soff").value;
+
+let data={
+
+pon:pon,
+poff:poff,
+
+son:son,
+soff:soff
+
+};
+
+client.publish(
+"SMART_JADWAL",
+JSON.stringify(data)
+);
+
+alert("Jadwal berhasil disimpan");
+
+}
+
+</script>
+
+</body>
+</html>
