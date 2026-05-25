@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>SMART IOT</title>
+<title>SMART IOT CONTROL</title>
 
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
@@ -123,29 +124,35 @@ OFF<br>
 
 <script>
 
-// MQTT CONNECT
-const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+// ================= MQTT =================
+const client = mqtt.connect(
+'wss://broker.hivemq.com:8884/mqtt'
+);
 
-// CONNECTED
+// ================= CONNECT =================
 client.on('connect',()=>{
 
 console.log("MQTT CONNECTED");
 
+// STATUS
 client.subscribe("SMART_STATUS");
 
 });
 
-// STATUS
+// ================= STATUS =================
 client.on('message',(topic,message)=>{
 
 let data=JSON.parse(message.toString());
 
+// RELAY
 document.getElementById("relay").innerHTML=
 "Relay : "+(data.relay ? "ON":"OFF");
 
+// MODE
 document.getElementById("mode").innerHTML=
 "Mode : "+(data.auto ? "AUTO":"MANUAL");
 
+// ONLINE
 document.getElementById("online").innerHTML=
 "Internet : "+(data.online ? "ONLINE":"OFFLINE");
 
@@ -159,25 +166,41 @@ hh+":"+mm+":"+ss;
 
 });
 
-// CONTROL
+// ================= CONTROL =================
 function sendControl(cmd){
 
-client.publish("SMART_CONTROL",cmd);
+client.publish(
+"SMART_CONTROL",
+cmd,
+{
+qos:1,
+retain:true
+}
+);
+
+alert("MODE : "+cmd);
 
 }
 
-// SET JAM
+// ================= SET JAM =================
 function setJam(){
 
 let jam=document.getElementById("jamset").value;
 
-client.publish("SMART_TIME",jam);
+client.publish(
+"SMART_TIME",
+jam,
+{
+qos:1,
+retain:true
+}
+);
 
 alert("Jam berhasil diset");
 
 }
 
-// SET JADWAL
+// ================= SET JADWAL =================
 function setJadwal(){
 
 let pon=document.getElementById("pon").value;
@@ -198,7 +221,11 @@ soff:soff
 
 client.publish(
 "SMART_JADWAL",
-JSON.stringify(data)
+JSON.stringify(data),
+{
+qos:1,
+retain:true
+}
 );
 
 alert("Jadwal berhasil disimpan");
