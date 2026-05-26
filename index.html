@@ -6,38 +6,28 @@
     <title>RIZQY-PROJECT IoT Control Center</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #0f172a; color: #f8fafc; padding: 20px; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
         .container { width: 100%; max-width: 450px; margin: auto; }
-        
         .card { background: #1e293b; border: 1px solid #334155; padding: 25px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); text-align: center; }
         h2 { font-size: 22px; font-weight: 700; color: #00f2fe; margin-bottom: 5px; }
         h3 { font-size: 16px; font-weight: 600; color: #38bdf8; margin-top: 15px; margin-bottom: 15px; text-align: left; }
         hr { border: 0; height: 1px; background: #334155; margin: 15px 0; }
-        
         .clock-box { font-size: 32px; font-weight: 800; color: #00f2fe; background: #0f172a; padding: 12px; border-radius: 10px; margin: 10px 0; font-family: 'Courier New', monospace; border: 1px solid #334155; letter-spacing: 2px; }
-
         .indicator-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px 0; font-weight: 700; font-size: 16px; }
         .indicator-dot { width: 20px; height: 20px; border-radius: 50%; background-color: #64748b; display: inline-block; transition: all 0.4s ease; }
         .status-on { background-color: #10b981; box-shadow: 0 0 15px #10b981; }
         .status-off { background-color: #ef4444; box-shadow: 0 0 15px #ef4444; }
-
         .btn-group { display: flex; justify-content: space-between; gap: 10px; }
         .btn { flex: 1; padding: 14px; font-size: 15px; font-weight: 700; text-align: center; border-radius: 8px; color: #0f172a; cursor: pointer; border: none; transition: all 0.2s ease; }
         .btn-on { background: linear-gradient(to right, #10b981, #059669); color: white; }
         .btn-off { background: linear-gradient(to right, #ef4444, #dc2626); color: white; }
         .btn-submit { background: linear-gradient(to right, #00f2fe, #4facfe); width: 100%; margin-top: 15px; color: #0f172a; font-weight: 700; }
-        .btn:hover:not(:disabled) { transform: translateY(-2px); opacity: 0.95; }
-        .btn:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; }
-        
         .status-box { padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 15px; background-color: #334155; color: #cbd5e1; border: 1px solid #475569; }
-        
         .timer-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #38bdf8; }
         .timer-row span { font-weight: 600; font-size: 14px; color: #e2e8f0; }
         .timer-row label { font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 5px; }
         .timer-row input[type="time"] { padding: 6px; border: 1px solid #334155; background: #1e293b; color: white; border-radius: 6px; font-size: 13px; outline: none; }
-        
-        /* Box Notifikasi Jadwal */
         .sync-box { font-size: 13px; font-weight: 600; padding: 10px; border-radius: 6px; text-align: center; display: block; background: #0f172a; border: 1px solid #22d3ee; color: #22d3ee; margin-bottom: 10px; transition: all 0.3s ease; }
     </style>
 </head>
@@ -51,7 +41,7 @@
         
         <div class="indicator-container">
             <span id="lamp-dot" class="indicator-dot"></span>
-            <span id="lamp-text">STATUS: SINKRONISASI...</span>
+            <span id="lamp-text">STATUS: CONNECTING...</span>
         </div>
 
         <div class="status-box" id="status-display">Menghubungkan ke Broker EMQX...</div>
@@ -63,8 +53,7 @@
         
         <hr>
         <h3>⚙️ PENGATURAN JADWAL OTOMATIS</h3>
-        
-        <div class="sync-box" id="sync-text">Mencoba sinkronisasi jadwal dengan alat...</div>
+        <div class="sync-box" id="sync-text">Sinkronisasi data langsung...</div>
         
         <form onsubmit="simpanJadwal(event)">
             <div class="timer-row"><span>Set 1</span><label>ON <input type="time" id="on1"></label><label>OFF <input type="time" id="off1"></label></div>
@@ -77,32 +66,26 @@
 </div>
 
 <script>
-    // --- JAM DIGITAL ---
     setInterval(() => {
         const sekarang = new Date();
         document.getElementById('live-clock').innerText = String(sekarang.getHours()).padStart(2, '0') + ':' + String(sekarang.getMinutes()).padStart(2, '0') + ':' + String(sekarang.getSeconds()).padStart(2, '0');
     }, 1000);
 
-    // --- MQTT CONFIGURATION ---
     const topikKontrol = "nepanled1";
     const topikStatus = "nepanled1/status"; 
     const topikJadwalStatus = "nepanled1/jadwal_status"; 
     
-    const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt", { clientId: "cl_rizqy_only_" + Math.random().toString(16).substr(2, 8) });
-
-    let sedangMenyimpan = false; // Flag status penyimpanan
+    const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt", { clientId: "cl_rizqy_" + Math.random().toString(16).substr(2, 8) });
+    let sedangMenyimpan = false;
 
     client.on('connect', () => {
-        document.getElementById('status-display').innerText = "Terhubung! Jalur Sinkron.";
+        document.getElementById('status-display').innerText = "Terhubung! Jalur Sinkron Jaringan.";
         document.getElementById('status-display').style.backgroundColor = "#065f46";
-        
-        ['btn-nyala', 'btn-mati', 'btn-save'].forEach(id => {
-            document.getElementById(id).disabled = false;
-        });
+        ['btn-nyala', 'btn-mati', 'btn-save'].forEach(id => document.getElementById(id).disabled = false);
         
         client.subscribe(topikStatus);
         client.subscribe(topikJadwalStatus);
-        client.publish(topikKontrol, "STATUS_REQ"); 
+        client.publish(topikKontrol, "STATUS_REQ"); // Request data instan saat pertama kali web terbuka
     });
 
     client.on('message', (topic, message) => {
@@ -119,32 +102,23 @@
             const b = pesan.split("|");
             let idx = 1;
             for(let i = 1; i <= 4; i++) {
+                // Diperbaiki agar langsung merubah nilai input di layar seketika itu juga tanpa refresh
                 document.getElementById(`on${i}`).value = (b[idx] === "--:--" || !b[idx]) ? "" : b[idx]; idx++;
                 document.getElementById(`off${i}`).value = (b[idx] === "--:--" || !b[idx]) ? "" : b[idx]; idx++;
             }
             
-            // Cek jika data datang setelah user menekan tombol simpan
+            const box = document.getElementById("sync-text");
             if (sedangMenyimpan) {
-                const box = document.getElementById("sync-text");
                 box.innerText = "✓ Sukses! Jadwal Berhasil Tersimpan di Alat";
-                box.style.color = "#10b981";
-                box.style.borderColor = "#10b981";
-                box.style.background = "#064e3b";
-                
-                sedangMenyimpan = false; // reset status
-
-                // Setelah 4 detik balikkan tulisan ke normal
+                box.style.color = "#10b981"; box.style.borderColor = "#10b981"; box.style.background = "#064e3b";
+                sedangMenyimpan = false;
                 setTimeout(() => {
-                    box.innerText = "✓ Jadwal Terbaca & Sinkron!";
-                    box.style.color = "#22d3ee";
-                    box.style.borderColor = "#22d3ee";
-                    box.style.background = "#0f172a";
-                }, 4000);
+                    box.innerText = "✓ Jadwal Sinkron!";
+                    box.style.color = "#22d3ee"; box.style.borderColor = "#22d3ee"; box.style.background = "#0f172a";
+                }, 3000);
             } else {
-                document.getElementById("sync-text").innerText = "✓ Jadwal Terbaca & Sinkron!";
-                document.getElementById("sync-text").style.color = "#22d3ee";
-                document.getElementById("sync-text").style.borderColor = "#22d3ee";
-                document.getElementById("sync-text").style.background = "#0f172a";
+                box.innerText = "✓ Jadwal Sinkron!";
+                box.style.color = "#22d3ee"; box.style.borderColor = "#22d3ee"; box.style.background = "#0f172a";
             }
         }
     });
@@ -156,8 +130,7 @@
     function simpanJadwal(event) {
         event.preventDefault();
         if (!client.connected) return;
-
-        sedangMenyimpan = true; // Tandai bahwa user sedang memproses penyimpanan
+        sedangMenyimpan = true;
 
         let dataJadwal = "JADWAL";
         for(let i = 1; i <= 4; i++) {
@@ -166,12 +139,9 @@
         
         client.publish(topikKontrol, dataJadwal);
         
-        // Ubah tampilan menjadi proses loading menunggu balasan ESP8266
         const box = document.getElementById("sync-text");
         box.innerText = "⏳ Sedang mengirim jadwal ke alat...";
-        box.style.color = "#f59e0b";
-        box.style.borderColor = "#f59e0b";
-        box.style.background = "#78350f";
+        box.style.color = "#f59e0b"; box.style.borderColor = "#f59e0b"; box.style.background = "#78350f";
     }
 </script>
 </body>
