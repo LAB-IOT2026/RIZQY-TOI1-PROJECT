@@ -3,113 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Dashboard - RIZQY PROJECT</title>
+    <title>🌐 Rizqy TOI 1 - Cloud Control Center</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background-color: #0f172a; color: #f8fafc; padding: 20px; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
-        .box { background: #1e293b; padding: 30px; border-radius: 12px; width: 100%; max-width: 380px; text-align: center; border: 1px solid #334155; }
-        h2 { color: #00f2fe; margin-bottom: 20px; font-size: 22px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 6px; outline: none; }
-        input:focus { border-color: #00f2fe; }
-        button { width: 100%; padding: 12px; background: #00f2fe; color: #0f172a; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
-        .err { color: #ef4444; font-size: 13px; margin-top: 10px; display: none; }
-        .btn-zone { display: flex; gap: 10px; margin-top: 20px; }
-        .btn-on { background: #10b981; color: white; }
-        .btn-off { background: #ef4444; color: white; }
-        .status-box { margin-top: 15px; font-weight: bold; font-size: 18px; padding: 10px; background: #0f172a; border-radius: 6px; border: 1px solid #334155; }
+        .container { width: 100%; max-width: 450px; }
+        .card { background: #1e293b; border: 1px solid #334155; padding: 25px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; text-align: center; }
+        h2 { font-size: 22px; font-weight: 700; color: #00f2fe; }
+        h3 { font-size: 16px; font-weight: 600; color: #38bdf8; margin: 15px 0; text-align: left; }
+        hr { border: 0; height: 1px; background: #334155; margin: 15px 0; }
+        .status-koneksi { font-size: 12px; color: #94a3b8; margin-top: 5px; font-style: italic; }
+        .indicator-container { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; font-weight: 700; text-align: left; padding: 0 10px; }
+        .indicator-row { display: flex; align-items: center; gap: 12px; }
+        .indicator-dot { width: 16px; height: 16px; border-radius: 50%; background-color: #64748b; flex-shrink: 0; transition: 0.3s; }
+        .status-on { background-color: #10b981; box-shadow: 0 0 12px #10b981; }
+        .status-off { background-color: #ef4444; box-shadow: 0 0 12px #ef4444; }
+        .btn-group { display: flex; gap: 10px; }
+        .btn { flex: 1; padding: 14px; font-size: 15px; font-weight: 700; border-radius: 8px; cursor: pointer; border: none; color: white; transition: 0.2s; }
+        .btn-on { background: #10b981; } .btn-off { background: #ef4444; }
+        .btn-submit { background: linear-gradient(to right, #00f2fe, #4facfe); width: 100%; margin-top: 15px; color: #0f172a; font-weight: 700; }
+        .timer-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #38bdf8; gap: 5px; }
+        .timer-row span { font-weight: 600; font-size: 13px; min-width: 45px; text-align: left; }
+        .timer-row label { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+        .timer-row input[type='time'] { padding: 5px; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 6px; outline: none; font-size: 12px; }
     </style>
 </head>
 <body>
-
-<div id="login-screen" class="box">
-    <h2>🔐 LOGIN ONLINE SYSTEM</h2>
-    <input type="text" id="online-user" placeholder="Username Online">
-    <input type="password" id="online-pass" placeholder="Password Online">
-    <button onclick="cekLoginOnline()">MASUK KE PANEL</button>
-    <div id="error-login" class="err">❌ Username atau Password Salah!</div>
-</div>
-
-<div id="dashboard-screen" class="box" style="display: none;">
-    <h2>🌐 CONTROL ONLINE CENTER</h2>
-    <div class="status-box">STATUS ALAT: <span id="txt-status" style="color: #64748b;">CONNECTING...</span></div>
-    <div class="btn-zone">
-        <button class="btn-on" onclick="kirimPerintahMQTT('ON')">NYALAKAN</button>
-        <button class="btn-off" onclick="kirimPerintahMQTT('OFF')">MATIKAN</button>
+<div class="container">
+    <div class="card">
+        <h2>🌐 RIZQY-PROJECT TOI 1 (CLOUD)</h2>
+        <div class="status-koneksi" id="mqtt-status">Menghubungkan ke Broker Cloud...</div>
+        <hr>
+        <div class="indicator-container">
+            <div class='indicator-row'>
+                <span class='indicator-dot status-off' id='dot-manual'></span>
+                <span id='text-manual' style='color:#ef4444'>STATUS MANUAL: LOADING...</span>
+            </div>
+            <div class='indicator-row'>
+                <span class='indicator-dot status-off' id='dot-otomatis'></span>
+                <span id='text-otomatis' style='color:#ef4444'>STATUS OTOMATIS: LOADING...</span>
+            </div>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-on" onclick="publishKontrol('ON')">NYALAKAN</button>
+            <button class="btn btn-off" onclick="publishKontrol('OFF')">MATIKAN</button>
+        </div>
+        <hr>
+        <h3>⚙️ PENGATURAN JADWAL OTOMATIS (CLOUD)</h3>
+        <form id="form-jadwal" onsubmit="simpanJadwalCloud(event)">
+            <div id="container-timer">
+                </div>
+            <button type="submit" class="btn btn-submit">💾 SIMPAN SEMUA JADWAL KE ALAT</button>
+        </form>
     </div>
 </div>
 
 <script>
-// Variabel Kredensial untuk dicocokkan di Web
-const validUser = "rizqy";
-const validPass = "1234";
+    // Konfigurasi MQTT via WebSockets (Harus sesuai dengan sketch ESP8266)
+    const MQTT_BROKER = "broker.emqx.io";
+    const MQTT_PORT = 8083; // Port WebSocket EMQX (bukan 1883 karena ini berjalan di browser)
+    const TOPIC_CONTROL = "rizqy_toi1_secure_control_77";
+    const TOPIC_STATUS = "rizqy_toi1_secure_status_77";
+    const TOPIC_JADWAL = "rizqy_toi1_secure_jadwal_77";
 
-// Variabel Konfigurasi MQTT
-const mqtt_broker = "broker.emqx.io";
-const mqtt_port = 8083; // Menggunakan WebSocket port untuk Web Browser
-const tx_topic = "rizqy_toi1_secure_control_77";
-const rx_topic = "rizqy_toi1_secure_status_77";
+    let statusOtomatisAktif = false; 
+    let statusManual = "OFF";
 
-let mqttClient;
-let userTerinput = "";
-let passTerinput = "";
-
-function cekLoginOnline() {
-    const u = document.getElementById('online-user').value;
-    const p = document.getElementById('online-pass').value;
-    const err = document.getElementById('error-login');
-
-    if (u === validUser && p === validPass) {
-        userTerinput = u;
-        passTerinput = p;
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('dashboard-screen').style.display = 'block';
-        initMQTT(); // Hubungkan ke MQTT setelah sukses login
-    } else {
-        err.style.display = 'block';
+    // Generate Form Input Timer secara dinamis (4 Set)
+    const containerTimer = document.getElementById('container-timer');
+    for (let i = 0; i < 4; i++) {
+        containerTimer.innerHTML += `
+            <div class='timer-row'>
+                <span>Set ${i+1}</span>
+                <label>ON <input type='time' id='on${i}'></label>
+                <label>OFF <input type='time' id='off${i}'></label>
+            </div>
+        `;
     }
-}
 
-function initMQTT() {
+    // Inisialisasi Paho MQTT Client
     const clientId = "WebClient-" + Math.floor(Math.random() * 10000);
-    mqttClient = new Paho.MQTT.Client(mqtt_broker, Number(mqtt_port), clientId);
+    const client = new Paho.MQTT.Client(MQTT_BROKER, Number(MQTT_PORT), clientId);
 
-    mqttClient.onConnectionLost = function(responseObject) {
-        document.getElementById('txt-status').innerText = "DISCONNECTED";
-        document.getElementById('txt-status').style.color = "#ef4444";
-        setTimeout(initMQTT, 3000); // Auto reconnect
+    client.onConnectionLost = (responseObject) => {
+        document.getElementById('mqtt-status').innerText = "Koneksi Terputus! Mencoba menghubungkan ulang...";
+        document.getElementById('mqtt-status').style.color = "#ef4444";
+        setTimeout(hubungkanMQTT, 3000);
     };
 
-    mqttClient.onMessageArrived = function(message) {
-        if(message.destinationName === rx_topic) {
-            const status = message.payloadString;
-            const txt = document.getElementById('txt-status');
-            txt.innerText = status;
-            if(status === "ON") txt.style.color = "#10b981";
-            else txt.style.color = "#ef4444";
+    client.onMessageArrived = (message) => {
+        const topik = message.destinationName;
+        const payload = message.payloadString;
+
+        if (topik === TOPIC_STATUS) {
+            // Logika Status Manual vs Otomatis
+            if (statusOtomatisAktif) {
+                statusManual = "OFF";
+            } else {
+                statusManual = payload; // ON atau OFF
+            }
+            perbaruiTampilanDOM();
+        } 
+        else if (topik === TOPIC_JADWAL) {
+            if (payload.startsWith("JADWAL")) {
+                bongkarJadwalDariAlat(payload);
+            }
         }
     };
 
-    mqttClient.connect({
-        onSuccess: function() {
-            mqttClient.subscribe(rx_topic);
-            // Request status aktual ke ESP
-            let reqMsg = new Paho.MQTT.Message("STATUS_REQ");
-            reqMsg.destinationName = tx_topic;
-            mqttClient.send(reqMsg);
-        }
-    });
-}
+    function hubungkanMQTT() {
+        client.connect({
+            onSuccess: () => {
+                document.getElementById('mqtt-status').innerText = "Terhubung ke Cloud MQTT Server (OK)";
+                document.getElementById('mqtt-status').style.color = "#10b981";
+                // Subscribe ke topik status alat dan status jadwal
+                client.subscribe(TOPIC_STATUS);
+                client.subscribe(TOPIC_JADWAL);
+                // Minta update data terbaru dari ESP8266 saat web pertama kali dibuka
+                let reqMessage = new Paho.MQTT.Message("STATUS_REQ");
+                reqMessage.destinationName = TOPIC_CONTROL;
+                client.send(reqMessage);
+            },
+            onFailure: () => {
+                document.getElementById('mqtt-status').innerText = "Gagal Terhubung ke Broker. Coba lagi...";
+                setTimeout(hubungkanMQTT, 5000);
+            },
+            useSSL: false // Set true jika memakai broker dengan SSL port 8084
+        });
+    }
 
-function kirimPerintahMQTT(cmd) {
-    if(!mqttClient || !mqttClient.isConnected()) return;
-    // Mengemas payload aman: "username|password|perintah"
-    const securedPayload = userTerinput + "|" + passTerinput + "|" + cmd;
-    
-    let message = new Paho.MQTT.Message(securedPayload);
-    message.destinationName = tx_topic;
-    mqttClient.send(message);
-}
+    // Mengirim perintah ON/OFF dari tombol Web ke ESP8266 lewat MQTT
+    function publishKontrol(cmd) {
+        statusOtomatisAktif = false; // Tombol ditekan = mode otomatis gugur
+        statusManual = cmd;
+        
+        let message = new Paho.MQTT.Message(cmd);
+        message.destinationName = TOPIC_CONTROL;
+        client.send(message);
+        
+        perbaruiTampilanDOM();
+    }
+
+    // Menguraikan data string "JADWAL|ON|OFF|ON|OFF..." dari ESP8266 ke Form Input HTML
+    function bongkarJadwalDariAlat(data) {
+        const bagian = data.split('|');
+        // bagian[0] adalah teks "JADWAL"
+        let indeksData = 1;
+        for (let i = 0; i < 4; i++) {
+            let jamOn = bagian[indeksData++];
+            let jamOff = bagian[indeksData++];
+            
+            document.getElementById(`on${i}`).value = (jamOn === "--:--") ? "" : jamOn;
+            document.getElementById(`off${i}`).value = (jamOff === "--:--") ? "" : jamOff;
+        }
+    }
+
+    // Mengirim settingan jadwal dari form input HTML ke ESP8266 dalam bentuk String Protocol
+    function simpanJadwalCloud(event) {
+        event.preventDefault();
+        let payloadJadwal = "JADWAL";
+        
+        for (let i = 0; i < 4; i++) {
+            let valOn = document.getElementById(`on${i}`).value || "--:--";
+            let valOff = document.getElementById(`off${i}`).value || "--:--";
+            payloadJadwal += `|${valOn}|${valOff}`;
+        }
+
+        let message = new Paho.MQTT.Message(payloadJadwal);
+        message.destinationName = TOPIC_CONTROL;
+        client.send(message);
+        alert("Jadwal terkirim ke alat lewat Cloud!");
+    }
+
+    // Fungsi update elemen UI Web
+    function perbaruiTampilanDOM() {
+        // Render Elemen Status Manual
+        const dotManual = document.getElementById('dot-manual');
+        const textManual = document.getElementById('text-manual');
+        if (statusManual === "ON") {
+            dotManual.className = "indicator-dot status-on";
+            textManual.innerText = "STATUS MANUAL: ON";
+            textManual.style.color = "#10b981";
+        } else {
+            dotManual.className = "indicator-dot status-off";
+            textManual.innerText = "STATUS MANUAL: OFF";
+            textManual.style.color = "#ef4444";
+        }
+
+        // Render Elemen Status Otomatis
+        const dotOto = document.getElementById('dot-otomatis');
+        const textOto = document.getElementById('text-otomatis');
+        if (statusOtomatisAktif) {
+            dotOto.className = "indicator-dot status-on";
+            textOto.innerText = "STATUS OTOMATIS: ON (BY SYSTEM)";
+            textOto.style.color = "#10b981";
+        } else {
+            dotOto.className = "indicator-dot status-off";
+            textOto.innerText = "STATUS OTOMATIS: OFF";
+            textOto.style.color = "#ef4444";
+        }
+    }
+
+    // Jalankan Koneksi saat halaman dimuat
+    hubungkanMQTT();
 </script>
 </body>
 </html>
