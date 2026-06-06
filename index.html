@@ -3,16 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌐 Rizqy TOI 1 - Cloud Control Center</title>
+    <title>🌐 Rizqy TOI 1 - Secure Control Center</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background-color: #0f172a; color: #f8fafc; padding: 20px; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
         .container { width: 100%; max-width: 450px; }
         .card { background: #1e293b; border: 1px solid #334155; padding: 25px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 20px; text-align: center; }
-        h2 { font-size: 22px; font-weight: 700; color: #00f2fe; }
+        
+        /* ===== STYLE LOGIN GEREN & DARK MODE ===== */
+        .login-box { display: block; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #00f2fe; padding: 35px 25px; border-radius: 16px; }
+        .login-icon { font-size: 50px; margin-bottom: 10px; filter: drop-shadow(0 0 10px #00f2fe); }
+        .login-box h2 { font-size: 24px; letter-spacing: 1px; color: #00f2fe; text-shadow: 0 0 10px rgba(0,242,254,0.3); }
+        .login-box p { font-size: 13px; color: #94a3b8; margin-bottom: 20px; }
+        .main-content { display: none; } 
+        
+        h2 { font-size: 22px; font-weight: 700; color: #00f2fe; margin-bottom: 15px; }
         h3 { font-size: 16px; font-weight: 600; color: #38bdf8; margin: 15px 0; text-align: left; }
         hr { border: 0; height: 1px; background: #334155; margin: 15px 0; }
+        
+        /* Input Field Style */
+        input[type='text'], input[type='password'] { width: 100%; padding: 14px; margin: 8px 0; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 10px; outline: none; text-align: center; font-size: 16px; transition: 0.3s; }
+        input[type='text']:focus, input[type='password']:focus { border-color: #00f2fe; box-shadow: 0 0 10px rgba(0,242,254,0.2); }
+        
         .clock-box { font-size: 32px; font-weight: 800; color: #00f2fe; background: #0f172a; padding: 12px; border-radius: 10px; margin: 10px 0; font-family: monospace; border: 1px solid #334155; letter-spacing: 2px; }
         .status-koneksi { font-size: 12px; color: #94a3b8; margin-top: 5px; font-style: italic; }
         .indicator-container { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; font-weight: 700; text-align: left; padding: 0 10px; }
@@ -20,48 +33,84 @@
         .indicator-dot { width: 16px; height: 16px; border-radius: 50%; background-color: #64748b; flex-shrink: 0; transition: 0.3s; }
         .status-on { background-color: #10b981; box-shadow: 0 0 12px #10b981; }
         .status-off { background-color: #ef4444; box-shadow: 0 0 12px #ef4444; }
+        
         .btn-group { display: flex; gap: 10px; }
         .btn { flex: 1; padding: 14px; font-size: 15px; font-weight: 700; border-radius: 8px; cursor: pointer; border: none; color: white; transition: 0.2s; }
         .btn-on { background: #10b981; } .btn-off { background: #ef4444; }
         .btn-submit { background: linear-gradient(to right, #00f2fe, #4facfe); width: 100%; margin-top: 15px; color: #0f172a; font-weight: 700; }
+        
+        /* Tombol Login Baru */
+        .btn-login { background: linear-gradient(to right, #00f2fe, #4facfe); color: #0f172a; width: 100%; font-weight: 800; font-size: 16px; margin-top: 15px; border-radius: 10px; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(0,242,254,0.2); }
+        .btn-login:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,242,254,0.4); }
+        
         .timer-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #38bdf8; gap: 5px; }
         .timer-row span { font-weight: 600; font-size: 13px; min-width: 45px; text-align: left; }
         .timer-row label { font-size: 12px; display: flex; align-items: center; gap: 4px; }
         .timer-row input[type='time'] { padding: 5px; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 6px; outline: none; font-size: 12px; }
+        
+        .err-msg { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; padding: 10px; border-radius: 8px; font-size: 13px; margin-top: 12px; display: none; font-weight: 600; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="card">
-        <h2>🌐 RIZQY-PROJECT TOI 1 (ONLINE)</h2>
-        <div class='clock-box' id='live-clock'>00:00:00</div>
-        <div class="status-koneksi" id="mqtt-status">Menghubungkan ke Broker Online...</div>
+    <div class="card login-box" id="panel-login">
+        <div class="login-icon">🔐</div>
+        <h2>AUTHORIZED ACCESS</h2>
+        <p>Rizqy Project TOI 1 - Control Panel</p>
         <hr>
-        <div class="indicator-container">
-            <div class='indicator-row'>
-                <span class='indicator-dot status-off' id='dot-manual'></span>
-                <span id='text-manual' style='color:#ef4444'>STATUS MANUAL: LOADING...</span>
-            </div>
-            <div class='indicator-row'>
-                <span class='indicator-dot status-off' id='dot-otomatis'></span>
-                <span id='text-otomatis' style='color:#ef4444'>STATUS OTOMATIS: LOADING...</span>
-            </div>
-        </div>
-        <div class="btn-group">
-            <button class="btn btn-on" onclick="publishKontrol('ON')">NYALAKAN</button>
-            <button class="btn btn-off" onclick="publishKontrol('OFF')">MATIKAN</button>
-        </div>
-        <hr>
-        <h3>⚙️ PENGATURAN JADWAL OTOMATIS (ONLINE)</h3>
-        <form id="form-jadwal" onsubmit="simpanJadwalCloud(event)">
-            <div id="container-timer">
+        <input type="text" id="user-input" placeholder="Masukkan Username" autocomplete="off">
+        <input type="password" id="pass-input" placeholder="Masukkan Password">
+        <div class="err-msg" id="login-error">⚠️ Username atau Password Salah!</div>
+        <button class="btn btn-login" onclick="cekLogin()">MASUK SYSTEM</button>
+    </div>
+
+    <div class="main-content" id="konten-utama">
+        <div class="card">
+            <h2>🌐 RIZQY-PROJECT TOI 1 (ONLINE)</h2>
+            <div class='clock-box' id='live-clock'>00:00:00</div>
+            <div class="status-koneksi" id="mqtt-status">Menghubungkan ke Broker Online...</div>
+            <hr>
+            <div class="indicator-container">
+                <div class='indicator-row'>
+                    <span class='indicator-dot status-off' id='dot-manual'></span>
+                    <span id='text-manual' style='color:#ef4444'>STATUS MANUAL: LOADING...</span>
                 </div>
-            <button type="submit" class="btn btn-submit">💾 SIMPAN SEMUA JADWAL KE ALAT</button>
-        </form>
+                <div class='indicator-row'>
+                    <span class='indicator-dot status-off' id='dot-otomatis'></span>
+                    <span id='text-otomatis' style='color:#ef4444'>STATUS OTOMATIS: LOADING...</span>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-on" onclick="publishKontrol('ON')">NYALAKAN</button>
+                <button class="btn btn-off" onclick="publishKontrol('OFF')">MATIKAN</button>
+            </div>
+            <hr>
+            <h3>⚙️ PENGATURAN JADWAL OTOMATIS (ONLINE)</h3>
+            <form id="form-jadwal" onsubmit="simpanJadwalCloud(event)">
+                <div id="container-timer"></div>
+                <button type="submit" class="btn btn-submit">💾 SIMPAN SEMUA JADWAL KE ALAT</button>
+            </form>
+        </div>
     </div>
 </div>
 
 <script>
+    // Fungsi Validasi Akun Rizqy
+    function cekLogin() {
+        const u = document.getElementById('user-input').value;
+        const p = document.getElementById('pass-input').value;
+        const errMsg = document.getElementById('login-error');
+
+        if (u === "rizqy" && p === "123") {
+            document.getElementById('panel-login').style.display = "none";
+            document.getElementById('konten-utama').style.display = "block";
+            hubungkanMQTT(); 
+        } else {
+            errMsg.style.display = "block";
+            document.getElementById('pass-input').value = "";
+        }
+    }
+
     const MQTT_BROKER = "broker.emqx.io";
     const MQTT_PORT = 8084; 
     const TOPIC_CONTROL = "rizqy_toi1_secure_control_77";
@@ -73,7 +122,6 @@
     let listJadwalON = [];
     let listJadwalOFF = [];
 
-    // FITUR: Jam Digital Real-Time Berjalan
     const waktuLokal = new Date();
     let jam = waktuLokal.getHours();
     let menu = waktuLokal.getMinutes();
@@ -87,7 +135,6 @@
          document.getElementById('live-clock').innerText = String(jam).padStart(2, '0') + ':' + String(menu).padStart(2, '0') + ':' + String(detik).padStart(2, '0');
     }, 1000);
 
-    // Generate Form Input Timer
     const containerTimer = document.getElementById('container-timer');
     for (let i = 0; i < 4; i++) {
         containerTimer.innerHTML += `
@@ -99,7 +146,6 @@
         `;
     }
 
-    // Inisialisasi Paho MQTT Client
     const clientId = "WebClient-" + Math.floor(Math.random() * 10000);
     const client = new Paho.MQTT.Client(MQTT_BROKER, Number(MQTT_PORT), clientId);
 
@@ -147,27 +193,22 @@
     function publishKontrol(cmd) {
         statusOtomatisAktif = false;
         statusManual = cmd;
-        
         let message = new Paho.MQTT.Message(cmd);
         message.destinationName = TOPIC_CONTROL;
         client.send(message);
-        
         perbaruiTampilanDOM();
     }
 
+    // ... sisa logic javascript sama seperti sebelumnya ...
     function bongkarJadwalDariAlat(data) {
         const bagian = data.split('|');
         let indeksData = 1;
-        listJadwalON = [];
-        listJadwalOFF = [];
-
+        listJadwalON = []; listJadwalOFF = [];
         for (let i = 0; i < 4; i++) {
             let jamOn = bagian[indeksData++];
             let jamOff = bagian[indeksData++];
-            
             listJadwalON.push(jamOn);
             listJadwalOFF.push(jamOff);
-
             document.getElementById(`on${i}`).value = (jamOn === "--:--") ? "" : jamOn;
             document.getElementById(`off${i}`).value = (jamOff === "--:--") ? "" : jamOff;
         }
@@ -195,14 +236,12 @@
                 statusOtomatisAktif = true;
                 statusManual = "OFF";
             } else {
-                if (!statusOtomatisAktif) {
-                    statusManual = "ON";
-                }
+                if (!statusOtomatisAktif) statusManual = "ON";
             }
         } 
         else if (payloadStatusAlat === "OFF") {
             for (let i = 0; i < 4; i++) {
-                if (listJadwalOFF[i] !== "--:--" && listJadwalOFF[i] === sekarangWaktu) {
+                if (listJadwalOFF[i] !== "--:--" && listJadwalOFF[i] ===? sekarangWaktu) {
                     kecocokanOtomatis = true;
                     break;
                 }
@@ -215,13 +254,11 @@
     function simpanJadwalCloud(event) {
         event.preventDefault();
         let payloadJadwal = "JADWAL";
-        
         for (let i = 0; i < 4; i++) {
             let valOn = document.getElementById(`on${i}`).value || "--:--";
             let valOff = document.getElementById(`off${i}`).value || "--:--";
             payloadJadwal += `|${valOn}|${valOff}`;
         }
-
         let message = new Paho.MQTT.Message(payloadJadwal);
         message.destinationName = TOPIC_CONTROL;
         client.send(message);
@@ -261,8 +298,6 @@
             client.send(reqMessage);
         }
     }, 30000);
-
-    hubungkanMQTT();
 </script>
 </body>
 </html>
