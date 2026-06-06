@@ -39,8 +39,8 @@
         .btn-on { background: #10b981; } .btn-off { background: #ef4444; }
         .btn-submit { background: linear-gradient(to right, #00f2fe, #4facfe); width: 100%; margin-top: 15px; color: #0f172a; font-weight: 700; }
         
-        /* Tombol Login Baru */
-        .btn-login { background: linear-gradient(to right, #00f2fe, #4facfe); color: #0f172a; width: 100%; font-weight: 800; font-size: 16px; margin-top: 15px; border-radius: 10px; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(0,242,254,0.2); }
+        /* Tombol Login */
+        .btn-login { background: linear-gradient(to right, #00f2fe, #4facfe); color: #0f172a; width: 100%; font-weight: 800; font-size: 16px; margin-top: 15px; border-radius: 10px; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(0,242,254,0.2); border: none; padding: 14px; cursor: pointer; }
         .btn-login:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,242,254,0.4); }
         
         .timer-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #38bdf8; gap: 5px; }
@@ -95,22 +95,6 @@
 </div>
 
 <script>
-    // Fungsi Validasi Akun Rizqy
-    function cekLogin() {
-        const u = document.getElementById('user-input').value;
-        const p = document.getElementById('pass-input').value;
-        const errMsg = document.getElementById('login-error');
-
-        if (u === "rizqy" && p === "123") {
-            document.getElementById('panel-login').style.display = "none";
-            document.getElementById('konten-utama').style.display = "block";
-            hubungkanMQTT(); 
-        } else {
-            errMsg.style.display = "block";
-            document.getElementById('pass-input').value = "";
-        }
-    }
-
     const MQTT_BROKER = "broker.emqx.io";
     const MQTT_PORT = 8084; 
     const TOPIC_CONTROL = "rizqy_toi1_secure_control_77";
@@ -122,6 +106,23 @@
     let listJadwalON = [];
     let listJadwalOFF = [];
 
+    // Fungsi Validasi Akun Rizqy (Fixing Stuck)
+    function cekLogin() {
+        const u = document.getElementById('user-input').value;
+        const p = document.getElementById('pass-input').value;
+        const errMsg = document.getElementById('login-error');
+
+        if (u === "rizqy" && p === "123") {
+            document.getElementById('panel-login').style.display = "none";
+            document.getElementById('konten-utama').style.display = "block";
+            perbaruiTampilanDOM();
+        } else {
+            errMsg.style.display = "block";
+            document.getElementById('pass-input').value = "";
+        }
+    }
+
+    // Jam Live Jalankan Sejak Awal
     const waktuLokal = new Date();
     let jam = waktuLokal.getHours();
     let menu = waktuLokal.getMinutes();
@@ -135,6 +136,7 @@
          document.getElementById('live-clock').innerText = String(jam).padStart(2, '0') + ':' + String(menu).padStart(2, '0') + ':' + String(detik).padStart(2, '0');
     }, 1000);
 
+    // Render Box Timer Sejak Awal
     const containerTimer = document.getElementById('container-timer');
     for (let i = 0; i < 4; i++) {
         containerTimer.innerHTML += `
@@ -146,6 +148,7 @@
         `;
     }
 
+    // Buat Koneksi MQTT Terkoneksi di Background Semenjak Web Dibuka
     const clientId = "WebClient-" + Math.floor(Math.random() * 10000);
     const client = new Paho.MQTT.Client(MQTT_BROKER, Number(MQTT_PORT), clientId);
 
@@ -190,6 +193,9 @@
         });
     }
 
+    // Jalankan Koneksi MQTT Langsung Tanpa Nunggu Login Sukses
+    hubungkanMQTT();
+
     function publishKontrol(cmd) {
         statusOtomatisAktif = false;
         statusManual = cmd;
@@ -199,7 +205,6 @@
         perbaruiTampilanDOM();
     }
 
-    // ... sisa logic javascript sama seperti sebelumnya ...
     function bongkarJadwalDariAlat(data) {
         const bagian = data.split('|');
         let indeksData = 1;
@@ -241,7 +246,7 @@
         } 
         else if (payloadStatusAlat === "OFF") {
             for (let i = 0; i < 4; i++) {
-                if (listJadwalOFF[i] !== "--:--" && listJadwalOFF[i] ===? sekarangWaktu) {
+                if (listJadwalOFF[i] !== "--:--" && listJadwalOFF[i] === sekarangWaktu) {
                     kecocokanOtomatis = true;
                     break;
                 }
@@ -268,6 +273,8 @@
     function perbaruiTampilanDOM() {
         const dotManual = document.getElementById('dot-manual');
         const textManual = document.getElementById('text-manual');
+        if (!dotManual || !textManual) return; // Mencegah error jika belum login
+        
         if (statusManual === "ON") {
             dotManual.className = "indicator-dot status-on";
             textManual.innerText = "STATUS MANUAL: ON";
