@@ -13,6 +13,7 @@
         h2 { font-size: 22px; font-weight: 700; color: #00f2fe; }
         h3 { font-size: 16px; font-weight: 600; color: #38bdf8; margin: 15px 0; text-align: left; }
         hr { border: 0; height: 1px; background: #334155; margin: 15px 0; }
+        .clock-box { font-size: 32px; font-weight: 800; color: #00f2fe; background: #0f172a; padding: 12px; border-radius: 10px; margin: 10px 0; font-family: monospace; border: 1px solid #334155; letter-spacing: 2px; }
         .status-koneksi { font-size: 12px; color: #94a3b8; margin-top: 5px; font-style: italic; }
         .indicator-container { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; font-weight: 700; text-align: left; padding: 0 10px; }
         .indicator-row { display: flex; align-items: center; gap: 12px; }
@@ -33,6 +34,7 @@
 <div class="container">
     <div class="card">
         <h2>🌐 RIZQY-PROJECT TOI 1 (ONLINE)</h2>
+        <div class='clock-box' id='live-clock'>00:00:00</div>
         <div class="status-koneksi" id="mqtt-status">Menghubungkan ke Broker Online...</div>
         <hr>
         <div class="indicator-container">
@@ -60,24 +62,39 @@
 </div>
 
 <script>
-    // Konfigurasi MQTT Secure WebSockets untuk GitHub Pages (HTTPS)
     const MQTT_BROKER = "broker.emqx.io";
-    const MQTT_PORT = 8084; // Port 8084 (Secure WebSocket)
+    const MQTT_PORT = 8084; 
     const TOPIC_CONTROL = "rizqy_toi1_secure_control_77";
     const TOPIC_STATUS = "rizqy_toi1_secure_status_77";
     const TOPIC_JADWAL = "rizqy_toi1_secure_jadwal_77";
 
     let statusOtomatisAktif = false; 
     let statusManual = "OFF";
+    let listJadwalON = [];
+    let listJadwalOFF = [];
 
-    // Generate Form Input Timer secara dinamis (4 Set)
+    // FITUR: Jam Digital Real-Time Berjalan
+    const waktuLokal = new Date();
+    let jam = waktuLokal.getHours();
+    let menu = waktuLokal.getMinutes();
+    let detik = waktuLokal.getSeconds();
+    
+    setInterval(() => {
+         detik++;
+         if(detik >= 60) { detik = 0; menu++; }
+         if(menu >= 60) { menu = 0; jam++; }
+         if(jam >= 24) { jam = 0; }
+         document.getElementById('live-clock').innerText = String(jam).padStart(2, '0') + ':' + String(menu).padStart(2, '0') + ':' + String(detik).padStart(2, '0');
+    }, 1000);
+
+    // Generate Form Input Timer
     const containerTimer = document.getElementById('container-timer');
     for (let i = 0; i < 4; i++) {
         containerTimer.innerHTML += `
             <div class='timer-row'>
                 <span>Set ${i+1}</span>
-                <label>ON <input type='time' id='on${i}'></label>
-                <label>OFF <input type='time' id='off${i}'></label>
+                <label>ON <input type='time' id='on${i}' onchange='updateJadwalLokal()'></label>
+                <label>OFF <input type='time' id='off${i}' onchange='updateJadwalLokal()'></label>
             </div>
         `;
     }
@@ -97,11 +114,7 @@
         const payload = message.payloadString;
 
         if (topik === TOPIC_STATUS) {
-            if (statusOtomatisAktif) {
-                statusManual = "OFF";
-            } else {
-                statusManual = payload;
-            }
+            cekApakahOtomatisAktif(payload);
             perbaruiTampilanDOM();
         } 
         else if (topik === TOPIC_JADWAL) {
@@ -119,7 +132,6 @@
                 client.subscribe(TOPIC_STATUS);
                 client.subscribe(TOPIC_JADWAL);
                 
-                // Minta status awal ke ESP8266
                 let reqMessage = new Paho.MQTT.Message("STATUS_REQ");
                 reqMessage.destinationName = TOPIC_CONTROL;
                 client.send(reqMessage);
@@ -128,7 +140,7 @@
                 document.getElementById('mqtt-status').innerText = "Gagal Terhubung ke Broker. Coba lagi...";
                 setTimeout(hubungkanMQTT, 5000);
             },
-            useSSL: true // Diaktifkan agar lolos keamanan keamanan HTTPS GitHub Pages
+            useSSL: true 
         });
     }
 
@@ -146,12 +158,57 @@
     function bongkarJadwalDariAlat(data) {
         const bagian = data.split('|');
         let indeksData = 1;
+        listJadwalON = [];
+        listJadwalOFF = [];
+
         for (let i = 0; i < 4; i++) {
             let jamOn = bagian[indeksData++];
             let jamOff = bagian[indeksData++];
             
+            listJadwalON.push(jamOn);
+            listJadwalOFF.push(jamOff);
+
             document.getElementById(`on${i}`).value = (jamOn === "--:--") ? "" : jamOn;
             document.getElementById(`off${i}`).value = (jamOff === "--:--") ? "" : jamOff;
+        }
+    }
+
+    function updateJadwalLokal() {
+        for (let i = 0; i < 4; i++) {
+            listJadwalON[i] = document.getElementById(`on${i}`).value || "--:--";
+            listJadwalOFF[i] = document.getElementById(`off${i}`).value || "--:--";
+        }
+    }
+
+    function cekApakahOtomatisAktif(payloadStatusAlat) {
+        const sekarangWaktu = `${String(jam).padStart(2, '0')}:${String(menu).padStart(2, '0')}`;
+        let kecocokanOtomatis = false;
+
+        if (payloadStatusAlat === "ON") {
+            for (let i = 0; i < 4; i++) {
+                if (listJadwalON[i] !== "--:--" && listJadwalON[i] === sekarangWaktu) {
+                    kecocokanOtomatis = true;
+                    break;
+                }
+            }
+            if (kecocokanOtomatis) {
+                statusOtomatisAktif = true;
+                statusManual = "OFF";
+            } else {
+                if (!statusOtomatisAktif) {
+                    statusManual = "ON";
+                }
+            }
+        } 
+        else if (payloadStatusAlat === "OFF") {
+            for (let i = 0; i < 4; i++) {
+                if (listJadwalOFF[i] !== "--:--" && listJadwalOFF[i] === sekarangWaktu) {
+                    kecocokanOtomatis = true;
+                    break;
+                }
+            }
+            statusOtomatisAktif = false;
+            statusManual = "OFF";
         }
     }
 
@@ -196,6 +253,14 @@
             textOto.style.color = "#ef4444";
         }
     }
+
+    setInterval(() => {
+        if(client.connected) {
+            let reqMessage = new Paho.MQTT.Message("STATUS_REQ");
+            reqMessage.destinationName = TOPIC_CONTROL;
+            client.send(reqMessage);
+        }
+    }, 30000);
 
     hubungkanMQTT();
 </script>
