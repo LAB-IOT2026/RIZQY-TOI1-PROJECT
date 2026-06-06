@@ -32,8 +32,8 @@
 <body>
 <div class="container">
     <div class="card">
-        <h2>🌐 RIZQY-PROJECT TOI 1 (CLOUD)</h2>
-        <div class="status-koneksi" id="mqtt-status">Menghubungkan ke Broker Cloud...</div>
+        <h2>🌐 RIZQY-PROJECT TOI 1 (ONLINE)</h2>
+        <div class="status-koneksi" id="mqtt-status">Menghubungkan ke Broker Online...</div>
         <hr>
         <div class="indicator-container">
             <div class='indicator-row'>
@@ -50,7 +50,7 @@
             <button class="btn btn-off" onclick="publishKontrol('OFF')">MATIKAN</button>
         </div>
         <hr>
-        <h3>⚙️ PENGATURAN JADWAL OTOMATIS (CLOUD)</h3>
+        <h3>⚙️ PENGATURAN JADWAL OTOMATIS (ONLINE)</h3>
         <form id="form-jadwal" onsubmit="simpanJadwalCloud(event)">
             <div id="container-timer">
                 </div>
@@ -60,9 +60,9 @@
 </div>
 
 <script>
-    // Konfigurasi MQTT via WebSockets (Harus sesuai dengan sketch ESP8266)
+    // Konfigurasi MQTT Secure WebSockets untuk GitHub Pages (HTTPS)
     const MQTT_BROKER = "broker.emqx.io";
-    const MQTT_PORT = 8083; // Port WebSocket EMQX (bukan 1883 karena ini berjalan di browser)
+    const MQTT_PORT = 8084; // Port 8084 (Secure WebSocket)
     const TOPIC_CONTROL = "rizqy_toi1_secure_control_77";
     const TOPIC_STATUS = "rizqy_toi1_secure_status_77";
     const TOPIC_JADWAL = "rizqy_toi1_secure_jadwal_77";
@@ -97,11 +97,10 @@
         const payload = message.payloadString;
 
         if (topik === TOPIC_STATUS) {
-            // Logika Status Manual vs Otomatis
             if (statusOtomatisAktif) {
                 statusManual = "OFF";
             } else {
-                statusManual = payload; // ON atau OFF
+                statusManual = payload;
             }
             perbaruiTampilanDOM();
         } 
@@ -117,10 +116,10 @@
             onSuccess: () => {
                 document.getElementById('mqtt-status').innerText = "Terhubung ke Cloud MQTT Server (OK)";
                 document.getElementById('mqtt-status').style.color = "#10b981";
-                // Subscribe ke topik status alat dan status jadwal
                 client.subscribe(TOPIC_STATUS);
                 client.subscribe(TOPIC_JADWAL);
-                // Minta update data terbaru dari ESP8266 saat web pertama kali dibuka
+                
+                // Minta status awal ke ESP8266
                 let reqMessage = new Paho.MQTT.Message("STATUS_REQ");
                 reqMessage.destinationName = TOPIC_CONTROL;
                 client.send(reqMessage);
@@ -129,13 +128,12 @@
                 document.getElementById('mqtt-status').innerText = "Gagal Terhubung ke Broker. Coba lagi...";
                 setTimeout(hubungkanMQTT, 5000);
             },
-            useSSL: false // Set true jika memakai broker dengan SSL port 8084
+            useSSL: true // Diaktifkan agar lolos keamanan keamanan HTTPS GitHub Pages
         });
     }
 
-    // Mengirim perintah ON/OFF dari tombol Web ke ESP8266 lewat MQTT
     function publishKontrol(cmd) {
-        statusOtomatisAktif = false; // Tombol ditekan = mode otomatis gugur
+        statusOtomatisAktif = false;
         statusManual = cmd;
         
         let message = new Paho.MQTT.Message(cmd);
@@ -145,10 +143,8 @@
         perbaruiTampilanDOM();
     }
 
-    // Menguraikan data string "JADWAL|ON|OFF|ON|OFF..." dari ESP8266 ke Form Input HTML
     function bongkarJadwalDariAlat(data) {
         const bagian = data.split('|');
-        // bagian[0] adalah teks "JADWAL"
         let indeksData = 1;
         for (let i = 0; i < 4; i++) {
             let jamOn = bagian[indeksData++];
@@ -159,7 +155,6 @@
         }
     }
 
-    // Mengirim settingan jadwal dari form input HTML ke ESP8266 dalam bentuk String Protocol
     function simpanJadwalCloud(event) {
         event.preventDefault();
         let payloadJadwal = "JADWAL";
@@ -176,9 +171,7 @@
         alert("Jadwal terkirim ke alat lewat Cloud!");
     }
 
-    // Fungsi update elemen UI Web
     function perbaruiTampilanDOM() {
-        // Render Elemen Status Manual
         const dotManual = document.getElementById('dot-manual');
         const textManual = document.getElementById('text-manual');
         if (statusManual === "ON") {
@@ -191,7 +184,6 @@
             textManual.style.color = "#ef4444";
         }
 
-        // Render Elemen Status Otomatis
         const dotOto = document.getElementById('dot-otomatis');
         const textOto = document.getElementById('text-otomatis');
         if (statusOtomatisAktif) {
@@ -205,7 +197,6 @@
         }
     }
 
-    // Jalankan Koneksi saat halaman dimuat
     hubungkanMQTT();
 </script>
 </body>
